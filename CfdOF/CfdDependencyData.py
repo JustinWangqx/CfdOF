@@ -81,11 +81,21 @@ FOAM_DIR_DEFAULTS = {'Windows': ['C:\\blueCFD-Core-*',
                                '/usr/lib/openfoam/openfoam*',  # ESI official packages
                                '~/openfoam/OpenFOAM-v*',
                                '~/OpenFOAM/OpenFOAM-*.*', '~/OpenFOAM/OpenFOAM-dev'],  # Typical self-built locations
-                     "Darwin": ['~/OpenFOAM/OpenFOAM-*.*', '~/OpenFOAM/OpenFOAM-dev']
+                     "Darwin": ['/Applications/OpenFOAM*.app', '~/Applications/OpenFOAM*.app',
+                                '~/OpenFOAM/OpenFOAM-*.*', '~/OpenFOAM/OpenFOAM-dev']
                      }
 
 PARAVIEW_PATH_DEFAULTS = {
                     "Windows": ["C:\\Program Files\\ParaView *\\bin\\paraview.exe"],
                     "Linux": ["/usr/bin/paraview", "/usr/local/bin/paraview"],
-                    "Darwin": ["/Applications/ParaView-*.app/Contents/MacOS/paraview"]
+                    "Darwin": ["/Applications/ParaView*.app/Contents/MacOS/paraview",
+                               "~/Applications/ParaView*.app/Contents/MacOS/paraview",
+                               "/opt/homebrew/bin/paraview", "/usr/local/bin/paraview"]
+                    }
+
+# Finder-launched applications do not normally inherit Homebrew's shell PATH.
+GMSH_PATH_DEFAULTS = {
+                    "Darwin": ["/opt/homebrew/bin/gmsh", "/usr/local/bin/gmsh",
+                               "/Applications/Gmsh.app/Contents/MacOS/gmsh",
+                               "~/Applications/Gmsh.app/Contents/MacOS/gmsh"]
                     }

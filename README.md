@@ -6,6 +6,16 @@ It guides the user in selecting the relevant physics, specifying the material pr
 boundary conditions and choosing the solver settings before running the simulation. Best practices are built in to
 maximise the stability of the solvers.
 
+**macOS port.** Justin Wang contributed the macOS port. He is not the original
+author of CfdOF. This fork retains the [upstream project](https://github.com/jaheyns/CfdOF)
+history, contributors, and license.
+
+**macOS 移植。** Justin Wang 贡献了 macOS 移植，CfdOF 的原作来自上游项目，
+他并非 CfdOF 的第一作者。本分支保留上游提交历史、贡献者署名和许可证。
+
+See [native macOS setup and verification](PORTING.md) for the Apple Silicon
+installation instructions. 中文安装和验证说明也见 [PORTING.md](PORTING.md)。
+
 ![screenshot](Doc/Resources/boiler.png)
 
 Disclaimer:
@@ -56,9 +66,10 @@ Windows 7-11; 64-bit version is required.
 
 #### macOS
 
-Not widely tested, but success has been reported. See
-[the following forum post](https://forum.freecad.org/viewtopic.php?f=37&t=63782&p=547611#p547578)
-for instructions.
+This fork adds a native Apple Silicon workflow with OpenFOAM.app. See the
+[macOS setup and verification notes](PORTING.md) for prerequisites and the
+tested configuration. The [upstream forum post](https://forum.freecad.org/viewtopic.php?f=37&t=63782&p=547611#p547578)
+describes a separate macOS setup.
 
 ## Getting started
 

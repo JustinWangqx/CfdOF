@@ -122,6 +122,13 @@ class CfdPreferencePage:
 
         self.form.gb_openfoam.setVisible(platform.system() == 'Windows')
         self.form.gb_paraview.setVisible(platform.system() == 'Windows')
+        if platform.system() == 'Darwin':
+            self.form.le_foam_dir.setPlaceholderText(
+                translate("CfdPreferencePage", "Automatic; or select an OpenFOAM .app bundle"))
+            self.form.le_paraview_path.setPlaceholderText(
+                translate("CfdPreferencePage", "Automatic; or select a ParaView .app bundle or executable"))
+            self.form.le_gmsh_path.setPlaceholderText(
+                translate("CfdPreferencePage", "Automatic; or select a Gmsh .app bundle or executable"))
         self.form.textEdit_Output.setOpenExternalLinks(True)
 
     def __del__(self):
@@ -201,7 +208,8 @@ class CfdPreferencePage:
             runtime = None
             if not disable_exception:
                 raise
-        CfdTools.setFoamDir(self.initial_foam_dir)
+        finally:
+            CfdTools.setFoamDir(self.initial_foam_dir)
         return runtime
 
     def setDownloadURLs(self):
@@ -223,8 +231,15 @@ class CfdPreferencePage:
         self.gmsh_path = text
 
     def chooseFoamDir(self):
+        # The native macOS directory picker treats application bundles as files.
+        # Qt's own picker lets the user select the .app directory itself.
+        options = QtGui.QFileDialog.ShowDirsOnly
+        caption = translate("FilePicker", "Choose OpenFOAM directory")
+        if platform.system() == 'Darwin':
+            options |= QtGui.QFileDialog.DontUseNativeDialog
+            caption = translate("FilePicker", "Choose OpenFOAM directory or .app bundle")
         d = QtGui.QFileDialog().getExistingDirectory(
-            None, translate("FilePicker", "Choose OpenFOAM directory"), self.foam_dir
+            None, caption, self.foam_dir, options
         )
         if d and os.access(d, os.R_OK):
             self.foam_dir = os.path.normpath(d)
@@ -269,12 +284,14 @@ class CfdPreferencePage:
         CfdTools.setParaviewPath(self.paraview_path)
         CfdTools.setGmshPath(self.gmsh_path)
         QApplication.setOverrideCursor(Qt.WaitCursor)
-        self.consoleMessage("Checking dependencies...")
-        CfdTools.checkCfdDependencies(lambda msg:  (print(msg), self.consoleMessage(msg)))
-        CfdTools.setFoamDir(self.initial_foam_dir)
-        CfdTools.setParaviewPath(self.initial_paraview_path)
-        CfdTools.setGmshPath(self.initial_gmsh_path)
-        QApplication.restoreOverrideCursor()
+        try:
+            self.consoleMessage("Checking dependencies...")
+            CfdTools.checkCfdDependencies(lambda msg:  (print(msg), self.consoleMessage(msg)))
+        finally:
+            CfdTools.setFoamDir(self.initial_foam_dir)
+            CfdTools.setParaviewPath(self.initial_paraview_path)
+            CfdTools.setGmshPath(self.initial_gmsh_path)
+            QApplication.restoreOverrideCursor()
 
     def showAdministratorWarningMessage(self):
         if platform.system() == "Windows":
@@ -405,8 +422,8 @@ class CfdPreferencePage:
                     else:
                         if platform.system() == 'Darwin':
                             self.install_process = CfdTools.startFoamApplication(
-                                "export WM_NCOMPPROCS=`sysctl -n hw.logicalcpu`; ./Allwmake",
-                                "$WM_PROJECT_USER_DIR/"+CfdDependencyData.CFMESH_FILE_BASE,
+                                "export WM_NCOMPPROCS=$(/usr/sbin/sysctl -n hw.logicalcpu 2>/dev/null || echo 1); ./Allwmake",
+                                os.path.join(user_dir, CfdDependencyData.CFMESH_FILE_BASE),
                                 'log.Allwmake', self.installFinished, stderr_hook=self.stderrFilter)
                         else:
                             self.install_process = CfdTools.startFoamApplication(
@@ -434,8 +451,8 @@ class CfdPreferencePage:
                     else:
                         if platform.system() == 'Darwin':
                             self.install_process = CfdTools.startFoamApplication(
-                                "export WM_NCOMPPROCS=`sysctl -n hw.logicalcpu`; ./Allwmake",
-                                "$WM_PROJECT_USER_DIR/"+CfdDependencyData.HISA_FILE_BASE,
+                                "export WM_NCOMPPROCS=$(/usr/sbin/sysctl -n hw.logicalcpu 2>/dev/null || echo 1); ./Allwmake",
+                                os.path.join(user_dir, CfdDependencyData.HISA_FILE_BASE),
                                 'log.Allwmake', self.installFinished, stderr_hook=self.stderrFilter)
                         else:
                             self.install_process = CfdTools.startFoamApplication(

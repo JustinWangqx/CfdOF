@@ -27,7 +27,9 @@
 import FreeCAD
 from FreeCAD import Units
 import os
+import shlex
 import tempfile
+from CfdOF import CfdMacOS
 from CfdOF import CfdTools
 import math
 import MeshPart
@@ -725,6 +727,8 @@ class CfdMeshTools:
             'ExtrusionSettings': self.extrusion_settings,
             'ConvertToDualMesh': self.mesh_obj.ConvertToDualMesh
         }
+        if self.settings['FoamRuntime'] == 'MacOSApp':
+            self.settings['MacOSLauncher'] = shlex.quote(CfdMacOS.openFoamAppLauncher(installation_path))
 
         self.settings['hostFileRequired'] = self.analysis.UseHostfile
         if self.settings['hostFileRequired'] == True:

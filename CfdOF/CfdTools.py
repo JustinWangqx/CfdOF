@@ -51,6 +51,7 @@ import CfdOF
 import time
 import atexit
 from CfdOF import CfdDependencyData
+from CfdOF import CfdMacOS
 if FreeCAD.GuiUp:
     import FreeCADGui
     from PySide import QtGui
@@ -543,6 +544,8 @@ def getFoamRuntime():
             runtime = 'WindowsDocker'
         elif os.path.exists(os.path.join(getFoamDir(), "etc", "bashrc")):
             runtime = 'BashWSL'
+    elif platform.system() == 'Darwin' and CfdMacOS.openFoamAppLauncher(installation_path):
+        runtime = 'MacOSApp'
     else:
         if not len(getFoamDir()):
             runtime = 'PosixPreloaded'
@@ -581,6 +584,13 @@ def detectFoamDir():
         if foam_dir and not os.path.exists(os.path.join(foam_dir, "etc", "bashrc")):
             foam_dir = None
         if not foam_dir:
+            foam_dir = None
+
+    if platform.system() == "Darwin":
+        # Finder does not load shell startup files. Honour an explicitly inherited
+        # native environment, then discover installed .app bundles via defaults.
+        foam_dir = os.environ.get("WM_PROJECT_DIR") or None
+        if foam_dir and not os.path.isfile(os.path.join(foam_dir, "etc", "bashrc")):
             foam_dir = None
 
     if foam_dir is None:
@@ -774,6 +784,9 @@ def makeRunCommand(cmd, dir=None, source_env=True, linux_shell=False):
         FreeCAD.Console.PrintMessage('Executing: {}\n'.format(cmd))
     else:
         FreeCAD.Console.PrintMessage('Executing: {} in {}\n'.format(cmd, dir))
+
+    if platform.system() == "Darwin" and getFoamRuntime() in ("MacOSApp", "Posix", "PosixPreloaded"):
+        return CfdMacOS.makeFoamCommand(installation_path, cmd, dir, source_env)
 
     source = ""
     if source_env and len(installation_path):
@@ -1196,12 +1209,7 @@ def checkCfdDependencies(msgFn):
                 if platform.system() == 'Windows':
                     pvpython_cmd = paraview_cmd.rstrip('paraview.exe')+'pvpython.exe'
                 elif platform.system() == "Darwin":
-                    pvpython_cmd = paraview_cmd.rstrip('paraview').rstrip('/')
-                    dirs = os.path.split(pvpython_cmd)
-                    if dirs[1] == 'MacOS':
-                        pvpython_cmd = os.path.join(dirs[0], 'bin', 'pvpython')
-                    else:
-                        pvpython_cmd = os.path.join(paraview_cmd, 'pvpython')
+                    pvpython_cmd = CfdMacOS.paraviewPythonExecutable(paraview_cmd)
                 else:
                     pvpython_cmd = paraview_cmd.rstrip('paraview')+'pvpython'
             if failed or not os.path.isfile(pvpython_cmd):
@@ -1250,13 +1258,18 @@ def checkCfdDependencies(msgFn):
             gmshversion = gmshversion.split()
             gmshversion = gmshversion[-1]
         msgFn("gmsh version: " + gmshversion)
-        versionlist = gmshversion.split(".")
-        if int(versionlist[0]) < CfdDependencyData.GMSH_MAJOR_VERSION_REQUIRED or \
-            (int(versionlist[0]) == CfdDependencyData.GMSH_MAJOR_VERSION_REQUIRED and \
-             int(versionlist[1]) < CfdDependencyData.GMSH_MINOR_VERSION_REQUIRED):
-            msgFn("gmsh version is older than minimum required ({}.{})".format( 
-                  CfdDependencyData.GMSH_MAJOR_VERSION_REQUIRED,
-                  CfdDependencyData.GMSH_MINOR_VERSION_REQUIRED))
+        try:
+            version = tuple(int(part) for part in gmshversion.split(".")[:2])
+            if len(version) != 2:
+                raise ValueError("Missing major/minor version")
+        except ValueError:
+            msgFn("Unable to determine gmsh version")
+        else:
+            if version < (CfdDependencyData.GMSH_MAJOR_VERSION_REQUIRED,
+                          CfdDependencyData.GMSH_MINOR_VERSION_REQUIRED):
+                msgFn("gmsh version is older than minimum required ({}.{})".format(
+                      CfdDependencyData.GMSH_MAJOR_VERSION_REQUIRED,
+                      CfdDependencyData.GMSH_MINOR_VERSION_REQUIRED))
 
     msgFn("Completed CFD dependency check")
 
@@ -1276,6 +1289,8 @@ def getParaviewExecutable():
     if not paraview_cmd:
         # Otherwise, see if the command 'paraview' is in the path.
         paraview_cmd = shutil.which('paraview')
+    if platform.system() == "Darwin":
+        paraview_cmd = CfdMacOS.bundleExecutable(paraview_cmd, "paraview")
     return paraview_cmd
 
 
@@ -1290,11 +1305,20 @@ def getGmshExecutable():
         if platform.system() == "Windows":
             # Use forward slashes to avoid escaping problems
             gmsh_cmd = '/'.join([FreeCAD.getHomePath().rstrip('/'), 'bin', 'gmsh.exe'])
+        elif platform.system() == "Darwin":
+            bundled_gmsh = os.path.join(FreeCAD.getHomePath(), "bin", "gmsh")
+            if os.path.isfile(bundled_gmsh) and os.access(bundled_gmsh, os.X_OK):
+                gmsh_cmd = bundled_gmsh
     if not gmsh_cmd:
         # Otherwise, see if the command 'gmsh' is in the path.
         gmsh_cmd = shutil.which("gmsh")
+    if not gmsh_cmd and platform.system() == "Darwin":
+        # Finder launches FreeCAD without Homebrew's bin directory in PATH.
+        gmsh_cmd = findInDefaultPaths(CfdDependencyData.GMSH_PATH_DEFAULTS)
     if not gmsh_cmd:
         raise IOError("gmsh executable path not set and not detected")
+    if platform.system() == "Darwin":
+        gmsh_cmd = CfdMacOS.bundleExecutable(gmsh_cmd, "gmsh")
     gmsh_cmd = os.path.normpath(gmsh_cmd)
     return gmsh_cmd
 

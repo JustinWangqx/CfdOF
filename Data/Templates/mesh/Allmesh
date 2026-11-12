@@ -1,5 +1,15 @@
 #!/bin/bash
 
+%{%(FoamRuntime%)
+%:MacOSApp
+# The bundled Bash preserves the dynamic library paths set by the app.
+if [[ ${CFDOF_APP_ENV:-} != 1 ]]; then
+    export CFDOF_APP_ENV=1
+    exec %(MacOSLauncher%) bash "$0" "$@"
+fi
+unset CFDOF_APP_ENV
+
+%}
 runCommand()
 {
     sol=$(basename -- "$1")
@@ -37,7 +47,7 @@ GMSH_EXE='%(GmshSettings/Executable%)'
 %:0
 if [[ $OSTYPE == 'darwin'* ]]
 then
-    NTHREADS=$(sysctl -n hw.logicalcpu)
+    NTHREADS=$(/usr/sbin/sysctl -n hw.logicalcpu || echo 1)
 else
     NTHREADS=$(nproc)
 fi

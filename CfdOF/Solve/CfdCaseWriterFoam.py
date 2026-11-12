@@ -27,7 +27,9 @@
 
 import os
 import os.path
+import shlex
 from FreeCAD import Units, Vector
+from CfdOF import CfdMacOS
 from CfdOF import CfdTools
 from CfdOF.TemplateBuilder import TemplateBuilder
 from CfdOF.CfdTools import cfdMessage
@@ -287,6 +289,8 @@ class CfdCaseWriterFoam:
 
         system_settings = self.settings['system']
         system_settings['FoamRuntime'] = CfdTools.getFoamRuntime()
+        if system_settings['FoamRuntime'] == 'MacOSApp':
+            system_settings['MacOSLauncher'] = shlex.quote(CfdMacOS.openFoamAppLauncher(installation_path))
         system_settings['CasePath'] = self.case_folder
         system_settings['FoamPath'] = norm_inst_path
         system_settings['TranslatedFoamPath'] = CfdTools.translatePath(installation_path)
